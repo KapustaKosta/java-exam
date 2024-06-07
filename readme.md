@@ -48,6 +48,8 @@
 		- [4. Внедрение моков: использование аннотаций `@Mock`, `@InjectMocks`](#4-%D0%92%D0%BD%D0%B5%D0%B4%D1%80%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BC%D0%BE%D0%BA%D0%BE%D0%B2-%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B0%D0%BD%D0%BD%D0%BE%D1%82%D0%B0%D1%86%D0%B8%D0%B9-mock-injectmocks)
 		- [5. Тестирование исключений: проверка выброса исключений в JUnit](#5-%D0%A2%D0%B5%D1%81%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B8%D1%81%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%B8%D0%B9-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0-%D0%B2%D1%8B%D0%B1%D1%80%D0%BE%D1%81%D0%B0-%D0%B8%D1%81%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%B8%D0%B9-%D0%B2-junit)
 
+
+
 # 1. Многопоточность
 ### 1. Создание потоков: использование `Thread` и `Runnable`
 В Java есть два основных способа создания потоков: наследование от класса `Thread` и реализация интерфейса `Runnable`.
@@ -737,6 +739,15 @@ public class JDBCQueryExample {
 
 **JPA (Java Persistence API)** — это стандарт для работы с объектно-реляционным маппингом (ORM).
 
+**Объектно-реляционный маппинг (ORM)** — это технология, позволяющая преобразовывать данные между несовместимыми типами систем, таких как объектно-ориентированные языки программирования и реляционные базы данных. ORM предоставляет способ работы с данными базы данных в виде объектов, что упрощает процесс разработки и управления данными.
+ORM автоматически генерирует SQL-запросы для создания, чтения, обновления и удаления данных.
+
+1. Маппинг (соответствие) объектов и таблиц:**
+    - В ORM классы в объектно-ориентированном языке программирования соответствуют таблицам в реляционной базе данных.
+    - Объекты этих классов соответствуют строкам таблиц.
+2. **Аннотации или XML-конфигурации:**
+    - Для определения соответствия между классами и таблицами используются аннотации или XML-конфигурации.
+
 **Аннотация `@Entity`:** Определяет класс как сущность.
 ```
 import javax.persistence.Entity;
@@ -824,80 +835,130 @@ public class HibernateUtil {
 }
 ```
 ### 4. Ассоциации в Hibernate: `OneToMany`, `ManyToMany`
-
-**OneToMany:**
+#### One-to-Many (один-ко-многим)
+**Отношение один-ко-многим** подразумевает, что одна сущность может быть связана с несколькими другими сущностями, но каждая из этих других сущностей связана только с одной сущностью.
+#### Пример:
+- Один пользователь (User) может иметь много заказов (Order).
+- Один заказ (Order) принадлежит только одному пользователю (User).
 ```
-import javax.persistence.*;
-import java.util.Set;
-
 @Entity
-public class Department {
+@Table(name = "users")
+public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @Column(name = "username")
+    private String username;
 
-    @OneToMany(mappedBy = "department")
-    private Set<Employee> employees;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Order> orders = new ArrayList<>();
 
-    // Getters and setters
+    // Геттеры и сеттеры
 }
 
 @Entity
-public class Employee {
+@Table(name = "orders")
+public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @Column(name = "order_date")
+    private LocalDate orderDate;
 
     @ManyToOne
-    @JoinColumn(name = "department_id")
-    private Department department;
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    // Getters and setters
+    // Геттеры и сеттеры
 }
 ```
-ManyToMany:
-```
-import javax.persistence.*;
-import java.util.Set;
+#### Характеристики:
+- **`@OneToMany` аннотация:** Указывается на стороне "один".
+- **`@ManyToOne` аннотация:** Указывается на стороне "много".
+- **mappedBy:** Указывает, что отношение управляется полем `user` в классе `Order`.
+- **cascade:** Определяет каскадирование операций (например, сохранение, удаление).
+- **fetch:** Определяет стратегию загрузки (ленивую или жадную).
 
+#### Many-to-Many (многие-ко-многим)
+**Отношение многие-ко-многим** подразумевает, что каждая сущность может быть связана с несколькими другими сущностями, и каждая из этих других сущностей может быть связана с несколькими сущностями.
+
+##### Пример:
+- Один студент (Student) может быть записан на несколько курсов (Course).
+- Один курс (Course) может включать нескольких студентов (Student).
+```
 @Entity
-public class Project {
+@Table(name = "students")
+public class Student {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "name")
     private String name;
 
     @ManyToMany
     @JoinTable(
-        name = "project_employee",
-        joinColumns = @JoinColumn(name = "project_id"),
-        inverseJoinColumns = @JoinColumn(name = "employee_id")
+        name = "student_course",
+        joinColumns = @JoinColumn(name = "student_id"),
+        inverseJoinColumns = @JoinColumn(name = "course_id")
     )
-    private Set<Employee> employees;
+    private List<Course> courses = new ArrayList<>();
 
-    // Getters and setters
+    // Геттеры и сеттеры
 }
 
 @Entity
-public class Employee {
+@Table(name = "courses")
+public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @Column(name = "title")
+    private String title;
 
-    @ManyToMany(mappedBy = "employees")
-    private Set<Project> projects;
+    @ManyToMany(mappedBy = "courses")
+    private List<Student> students = new ArrayList<>();
 
-    // Getters and setters
+    // Геттеры и сеттеры
 }
 ```
+##### Характеристики:
+- **`@ManyToMany` аннотация:** Указывается на обеих сторонах отношения.
+- **`@JoinTable` аннотация:** Определяет таблицу соединения, которая связывает две сущности.
+- **joinColumns:** Указывает на внешний ключ, ссылающийся на текущую сущность.
+- **inverseJoinColumns:** Указывает на внешний ключ, ссылающийся на другую сущность.
+- **mappedBy:** Указывает поле, управляющее отношением на другой стороне.
+
+#### Сравнение One-to-Many и Many-to-Many
+
+| Характеристика     | One-to-Many                             | Many-to-Many                  |
+| ------------------ | --------------------------------------- | ----------------------------- |
+| Отношение          | Один к многим                           | Многие ко многим              |
+| Аннотация          | `@OneToMany` и `@ManyToOne`             | `@ManyToMany`                 |
+| Стороны            | Указывается на стороне "один" и "много" | Указывается на обеих сторонах |
+| Таблица соединения | Не требуется                            | Требуется для хранения связей |
+| Пример             | Пользователь и заказы                   | Студенты и курсы              |
+#### Важные аспекты при работе с отношениями
+1. **Каскадирование:**
+    - Определяет, какие операции (сохранение, обновление, удаление) должны каскадироваться от родительской сущности к дочерним.
+    - Пример: `cascade = CascadeType.ALL`.
+2. **Загрузка:**
+    - Определяет, как сущности загружаются: лениво (LAZY) или жадно (EAGER).
+    - Пример: `fetch = FetchType.LAZY`.
+3. **mappedBy:**
+    - Указывает, какая сторона управляет отношением и определяет собственность.
 ### 5. Транзакции: управление транзакциями в JPA и Hibernate, аннотация `@Transactional`
+
+**Транзакции** — это механизм, который позволяет группировать несколько операций над базой данных в одно логическое целое. Транзакция гарантирует, что все операции внутри нее выполнятся успешно или ни одна из них не будет выполнена, если произойдет ошибка. Это обеспечивает согласованность данных и их целостность.
+
+#### Основные свойства транзакций (ACID):
+1. **Atomicity (Атомарность):** Все операции в транзакции либо завершаются успешно, либо не выполняются вообще.
+2. **Consistency (Согласованность):** Транзакция переводит базу данных из одного согласованного состояния в другое.
+3. **Isolation (Изоляция):** Результаты транзакции не видны другим параллельным транзакциям до её завершения.
+4. **Durability (Устойчивость):** Изменения, внесенные транзакцией, сохраняются в базе данных даже в случае сбоя системы.
 
 **Управление транзакциями с использованием JPA и Hibernate:**
 ```
@@ -929,6 +990,7 @@ public class HibernateTransactionExample {
     }
 }
 ```
+#### Декларативное управление транзакциями
 **Аннотация `@Transactional`:** Используется для обозначения методов, которые должны выполняться в транзакции.
 ```
 import org.springframework.stereotype.Service;
@@ -943,6 +1005,16 @@ public class EmployeeService {
     }
 }
 ```
+#### Важные аспекты использования транзакций
+1. **Propagation (Распространение):**
+    - Определяет, как методы с аннотацией `@Transactional` должны вести себя в отношении уже существующих транзакций.
+    - Примеры: `REQUIRED`, `REQUIRES_NEW`, `MANDATORY`.
+2. **Isolation (Изоляция):**
+    - Определяет уровень изоляции транзакции, что влияет на видимость изменений, сделанных другими параллельными транзакциями.
+    - Примеры: `READ_COMMITTED`, `REPEATABLE_READ`, `SERIALIZABLE`.
+3. **Rollback (Откат):**
+    - Определяет, когда должна произойти отмена транзакции. Можно указать, какие исключения должны приводить к откату.
+    - Пример: `@Transactional(rollbackFor = Exception.class)`.
 # 5. Spring MVC
 ### 1. Архитектура MVC: концепции, разделение на модель, представление, контроллер
 
@@ -1076,7 +1148,6 @@ public class RegistrationController {
 **REST (Representational State Transfer)** — это архитектурный стиль для создания веб-сервисов, использующий HTTP для выполнения операций с ресурсами.
 
 #### Методы HTTP:
-
 - **GET:** Получение ресурса.
 - **POST:** Создание нового ресурса.
 - **PUT:** Обновление существующего ресурса.
@@ -1084,7 +1155,6 @@ public class RegistrationController {
 - **PATCH:** Частичное обновление ресурса.
 
 #### Статусы HTTP:
-
 - **200 OK:** Успешное выполнение запроса.
 - **201 Created:** Ресурс успешно создан.
 - **204 No Content:** Успешное выполнение запроса, но нет содержимого для возвращения.
@@ -1164,53 +1234,73 @@ public class ProductController {
 ```
 ### 4. Spring RestTemplate и WebClient: взаимодействие с REST API
 
-**RestTemplate:** Используется для взаимодействия с RESTful веб-сервисами.
+`RestTemplate` и `WebClient` — это два различных клиента для выполнения HTTP-запросов в Spring. Они предоставляют возможности для взаимодействия с REST API, но имеют разные подходы и функциональные возможности.
+
+#### RestTemplate
+
+`RestTemplate` — это синхронный клиент для выполнения HTTP-запросов. Он был частью Spring Framework с ранних версий и стал стандартным способом взаимодействия с REST API до появления `WebClient`.
+
+##### Особенности:
+1. **Синхронность**: Все запросы выполняются в том же потоке, который их инициирует, что может привести к блокировке потоков при ожидании ответа.
+2. **Удобство использования**: `RestTemplate` предоставляет удобные методы для отправки запросов и обработки ответов, например, `getForObject`, `postForEntity`, `exchange`.
+3. **Поддержка Spring**: Легко интегрируется с остальными компонентами Spring.
+
+##### Пример использования:
 ```
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 
-public class RestClient {
-
-    private static final String BASE_URL = "https://api.example.com";
-
-    public User getUserById(Long id) {
+public class RestTemplateExample {
+    public static void main(String[] args) {
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<User> response = restTemplate.getForEntity(BASE_URL + "/users/" + id, User.class);
-        return response.getBody();
-    }
+        String url = "https://api.example.com/data";
 
-    public User createUser(User user) {
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<User> response = restTemplate.postForEntity(BASE_URL + "/users", user, User.class);
-        return response.getBody();
+        // GET запрос
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        System.out.println(response.getBody());
     }
 }
 ```
-**WebClient:** Современный, асинхронный и неблокирующий клиент для взаимодействия с RESTful веб-сервисами.
+#### WebClient
+`WebClient` — это более современный и гибкий клиент, предоставляемый Spring WebFlux. Он поддерживает как синхронные, так и асинхронные запросы, что делает его более подходящим для высоконагруженных и реактивных приложений.
+
+##### Особенности:
+1. **Асинхронность**: Поддерживает асинхронное выполнение запросов, что позволяет не блокировать потоки и лучше использовать системные ресурсы.
+2. **Реактивное программирование**: Основан на проекте Reactor и интегрируется с реактивным программированием.
+3. **Гибкость**: Позволяет легко настраивать запросы и обработку ответов с использованием цепочек методов.
+4. **Современные возможности**: Поддержка HTTP/2, веб-сокетов и других современных технологий.
+
+##### Пример использования:
 ```
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 public class WebClientExample {
+    public static void main(String[] args) {
+        WebClient webClient = WebClient.create("https://api.example.com");
 
-    private final WebClient webClient = WebClient.create("https://api.example.com");
+        // Асинхронный GET запрос
+        Mono<String> response = webClient.get()
+                .uri("/data")
+                .retrieve()
+                .bodyToMono(String.class);
 
-    public Mono<User> getUserById(Long id) {
-        return webClient.get()
-                        .uri("/users/{id}", id)
-                        .retrieve()
-                        .bodyToMono(User.class);
-    }
-
-    public Mono<User> createUser(User user) {
-        return webClient.post()
-                        .uri("/users")
-                        .bodyValue(user)
-                        .retrieve()
-                        .bodyToMono(User.class);
+        // Подписка на результат
+        response.subscribe(System.out::println);
     }
 }
 ```
+#### Сравнение `RestTemplate` и `WebClient`
+
+| Характеристика          | RestTemplate                       | WebClient                             |
+| ----------------------- | ---------------------------------- | ------------------------------------- |
+| Синхронность            | Синхронный                         | Асинхронный и синхронный              |
+| Реактивность            | Нет                                | Да                                    |
+| Производительность      | Может блокировать потоки           | Неблокирующий, более производительный |
+| Гибкость                | Ограниченная                       | Высокая гибкость и настройка          |
+| Современные возможности | Нет                                | Поддержка HTTP/2, веб-сокетов и т.д.  |
+| Поддержка в Spring      | Да                                 | Да                                    |
+| Будущее развития        | Ограниченная поддержка, устаревший | Активное развитие и поддержка         |
 # 7. Boot, Data, Security
 ### 1. Spring Boot: создание проекта, авто-конфигурация
 
@@ -1263,22 +1353,66 @@ public class MyApplication {
 ```
 ### 3. Spring Data JPA: интерфейс `CrudRepository`, `JpaRepository`
 
+`CrudRepository` и `JpaRepository` — это интерфейсы, предоставляемые Spring Data JPA для работы с базами данных. Они упрощают реализацию стандартных операций (CRUD — Create, Read, Update, Delete) и добавляют дополнительные возможности для работы с JPA.
 **Spring Data JPA** упрощает работу с базами данных, предлагая репозитории для стандартных операций.
 
-**Интерфейс `CrudRepository`:**
+#### CrudRepository
+`CrudRepository` — это базовый интерфейс, предоставляющий стандартные методы для выполнения CRUD-операций. Он является частью Spring Data и позволяет работать с сущностями без необходимости писать boilerplate-код для типичных операций.
+
+##### Основные методы `CrudRepository`:
+- `save(S entity)`: Сохраняет сущность.
+- `saveAll(Iterable<S> entities)`: Сохраняет несколько сущностей.
+- `findById(ID id)`: Находит сущность по её идентификатору.
+- `existsById(ID id)`: Проверяет существование сущности по её идентификатору.
+- `findAll()`: Возвращает все сущности.
+- `findAllById(Iterable<ID> ids)`: Возвращает все сущности по их идентификаторам.
+- `count()`: Возвращает количество сущностей.
+- `deleteById(ID id)`: Удаляет сущность по её идентификатору.
+- `delete(S entity)`: Удаляет сущность.
+- `deleteAll(Iterable<? extends S> entities)`: Удаляет несколько сущностей.
+- `deleteAll()`: Удаляет все сущности.
+
+##### Пример использования `CrudRepository`:
 ```
 import org.springframework.data.repository.CrudRepository;
 
 public interface UserRepository extends CrudRepository<User, Long> {
+    // Дополнительные методы можно определять здесь
 }
 ```
-Интерфейс `JpaRepository`:
+
+#### JpaRepository
+`JpaRepository` расширяет `CrudRepository` и добавляет дополнительные JPA-специфичные методы и функциональности. Он предоставляет более богатый набор операций, таких как пейджинг и сортировка, а также методы для выполнения сложных запросов.
+
+##### Дополнительные методы `JpaRepository`:
+- `findAll(Sort sort)`: Возвращает все сущности с учетом сортировки.
+- `findAll(Pageable pageable)`: Возвращает страницы сущностей.
+- `flush()`: Сбрасывает изменения в базу данных.
+- `saveAndFlush(S entity)`: Сохраняет сущность и сразу сбрасывает изменения в базу данных.
+- `deleteInBatch(Iterable<T> entities)`: Удаляет сущности в пакете.
+- `deleteAllInBatch()`: Удаляет все сущности в пакете.
+- И многие другие...
+
+##### Пример использования `JpaRepository`:
 ```
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+    // Дополнительные методы можно определять здесь
 }
 ```
+#### Сравнение `CrudRepository` и `JpaRepository`
+
+| Особенность            | CrudRepository                    | JpaRepository                        |
+| ---------------------- | --------------------------------- | ------------------------------------ |
+| Базовые CRUD операции  | Да                                | Да                                   |
+| Пейджинг и сортировка  | Нет                               | Да                                   |
+| JPA-специфичные методы | Нет                               | Да                                   |
+| Поддержка транзакций   | Да (наследуется от JpaRepository) | Да                                   |
+| Пример использования   | Простые CRUD операции             | Расширенные возможности работы с JPA |
+#### Когда использовать
+- **CrudRepository**: Если вам нужны только базовые CRUD операции без дополнительных возможностей пейджинга, сортировки и JPA-специфичных методов.
+- **JpaRepository**: Если вам нужны дополнительные возможности, такие как пейджинг, сортировка и другие методы, специфичные для JPA. Этот интерфейс является более мощным и гибким по сравнению с `CrudRepository`.
 ### 4. Запросы на основе методов: написание репозиториев с пользовательскими запросами
 
 **Spring Data JPA** позволяет создавать методы репозиториев на основе имен методов.
@@ -1296,9 +1430,114 @@ public interface UserRepository extends JpaRepository<User, Long> {
 ```
 ### 5. Spring Security: настройка аутентификации и авторизации, роли
 
-**Spring Security** предоставляет мощные средства для защиты приложений.
+`SecurityFilterChain` — это ключевой компонент в Spring Security, который отвечает за определение цепочки фильтров безопасности, применяемых к HTTP-запросам в приложении. Он позволяет конфигурировать правила доступа, аутентификации и авторизации для различных URL-адресов.
 
-#### Конфигурация безопасности:
+#### Основные компоненты и работа `SecurityFilterChain`
+##### 1. **Фильтры безопасности**
+- Фильтры являются основными строительными блоками в Spring Security, обрабатывающими запросы и применяющими к ним различные правила безопасности.
+- Каждый фильтр выполняет конкретную задачу, такую как аутентификация, авторизация, обработка CORS и т.д.
+- Фильтры могут быть связаны в цепочку, через которую проходят все запросы.
+##### 2. **Конфигурация `SecurityFilterChain`**
+- Конфигурация определяет, какие фильтры и в каком порядке будут применяться к запросам.
+- Это можно настроить с помощью класса `SecurityConfigurerAdapter` или аннотации `@EnableWebSecurity` вместе с методами конфигурации.
+
+#### Пример конфигурации `SecurityFilterChain`
+```
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/public/**").permitAll()  // Доступ разрешен всем
+                .antMatchers("/admin/**").hasRole("ADMIN")  // Только пользователям с ролью ADMIN
+                .anyRequest().authenticated()  // Все остальные запросы требуют аутентификации
+            .and()
+            .formLogin()  // Настройка формы логина
+                .loginPage("/login")
+                .permitAll()
+            .and()
+            .logout()  // Настройка выхода из системы
+                .permitAll();
+    }
+}
+```
+В этом примере:
+- **authorizeRequests()**: Определяет правила авторизации для различных URL.
+- **antMatchers()**: Определяет конкретные пути и применяет к ним правила доступа.
+- **formLogin()**: Настраивает страницу логина.
+- **logout()**: Настраивает выход из системы.
+
+#### Современный подход с использованием `SecurityFilterChain` в Spring Security 5.4+
+
+С введением Spring Security 5.4 и выше, появилась возможность использовать более гибкую конфигурацию, основанную на компонентах и лямбдах.
+
+#### Пример использования `SecurityFilterChain`:
+```
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests(authorize -> authorize
+                .antMatchers("/public/**").permitAll()
+                .antMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .formLogin(form -> form
+                .loginPage("/login")
+                .permitAll()
+            )
+            .logout(logout -> logout
+                .permitAll()
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService() {
+        UserDetails user = User.withDefaultPasswordEncoder()
+            .username("user")
+            .password("password")
+            .roles("USER")
+            .build();
+        
+        UserDetails admin = User.withDefaultPasswordEncoder()
+            .username("admin")
+            .password("admin")
+            .roles("ADMIN")
+            .build();
+
+        return new InMemoryUserDetailsManager(user, admin);
+    }
+}
+```
+#### Как работает `SecurityFilterChain`
+1. **Запуск фильтров**: Когда HTTP-запрос поступает в приложение, он проходит через цепочку фильтров, определенных в `SecurityFilterChain`.
+2. **Применение правил**: Каждый фильтр в цепочке выполняет свою задачу (например, проверка аутентификации, авторизация, обработка исключений и т.д.).
+3. **Контроль доступа**: Фильтры анализируют запрос и определяют, разрешено ли ему продолжить обработку или нужно выполнить какие-то действия (например, перенаправить на страницу логина).
+4. **Финальная обработка**: После прохождения всех фильтров запрос передается в конечную точку (контроллер, сервис и т.д.) для обработки бизнес-логики.
+#### Пример конфигурации безопасности:
 ```
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -1361,26 +1600,88 @@ public class AdminService {
     }
 }
 ```
-**Аннотация `@PreAuthorize`:** Используется для более гибкого контроля доступа, поддерживает SpEL (Spring Expression Language).
+
+#### Аннотация `@PreAuthorize`
+Аннотация `@PreAuthorize` — это мощный инструмент в Spring Security, который позволяет вам задавать правила авторизации на уровне методов. Она используется для определения условий, которые должны быть выполнены перед вызовом метода, что обеспечивает контроль доступа к методам на основе ролей, прав доступа и других условий безопасности.
+
+##### Основные аспекты `@PreAuthorize`
+1. **Выражения SpEL**: Аннотация использует Spring Expression Language (SpEL) для определения условий безопасности. Это позволяет гибко задавать правила авторизации.
+2. **Места использования**: `@PreAuthorize` можно использовать как на уровне интерфейсов, так и на уровне реализаций методов в классах.
+3. **Контроль доступа**: Аннотация проверяет условия до выполнения метода, обеспечивая предварительный контроль доступа.
+
+##### Пример использования `@PreAuthorize`
+```
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .anyRequest().authenticated()
+            .and()
+            .formLogin()
+                .permitAll()
+            .and()
+            .logout()
+                .permitAll();
+    }
+}
+```
+##### Пример сервиса с `@PreAuthorize`
 ```
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
-public class UserService {
+public class MyService {
 
-    @PreAuthorize("hasRole('ROLE_USER') and #userId == authentication.principal.id")
-    public User getUserDetails(Long userId) {
-        // Логика, доступная для пользователя с определенным ID
-        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public void adminMethod() {
+        // Только пользователи с ролью ADMIN могут вызвать этот метод
+        System.out.println("Admin method called");
     }
+
+    @PreAuthorize("#id == authentication.principal.id")
+    public void userMethod(Long id) {
+        // Только пользователь с идентификатором, совпадающим с его собственным, может вызвать этот метод
+        System.out.println("User method called");
+    }
+
+    @PreAuthorize("hasAuthority('READ_PRIVILEGE')")
+    public void privilegedMethod() {
+        // Только пользователи с правом доступа 'READ_PRIVILEGE' могут вызвать этот метод
+        System.out.println("Privileged method called");
+    }
+}
+```
+##### Как работают выражения SpEL в `@PreAuthorize`
+- **`hasRole('ROLE_NAME')`**: Проверяет, имеет ли текущий пользователь указанную роль. Роль должна быть указана с префиксом `ROLE_`.
+- **`hasAuthority('AUTHORITY')`**: Проверяет, имеет ли текущий пользователь указанное право (authority).
+- **`#id == authentication.principal.id`**: Сравнивает значение параметра метода с атрибутом текущего аутентифицированного пользователя. Здесь `#id` — это параметр метода, а `authentication.principal` представляет текущего аутентифицированного пользователя.
+- **`@someBean.someMethod(#id)`**: Вызывает метод бина Spring с использованием SpEL. Это позволяет использовать дополнительные компоненты Spring в выражениях.
+
+##### Пример сложного условия
+Вы можете комбинировать различные условия для создания сложных правил авторизации.
+```
+@PreAuthorize("hasRole('ROLE_ADMIN') or (hasRole('ROLE_USER') and #id == authentication.principal.id)")
+public void complexMethod(Long id) {
+    // Доступ разрешен пользователям с ролью ADMIN или пользователям с ролью USER, если их идентификатор совпадает с параметром id
+    System.out.println("Complex method called");
 }
 ```
 # 8. Тестирование (JUnit, Mockito)
 ### 1. JUnit 5: написание тестовых классов, аннотации `@Test`, `@BeforeEach`, `@AfterEach`
 
 **JUnit 5** — это популярный фреймворк для тестирования на Java.
-
 #### Написание тестовых классов и использование аннотаций:
 ```
 import org.junit.jupiter.api.*;
@@ -1443,45 +1744,103 @@ public class RepeatedTestExample {
 ```
 ### 3. Mockito: создание моков (mock объектов), настройки поведения моков
 
-**Mockito** — это библиотека для создания mock объектов и настройки их поведения в тестах.
+Mock объекты (или просто "моки") — это тестовые двойники, используемые для замены реальных объектов в тестах. Они позволяют изолировать код, который вы хотите протестировать, от его зависимостей, что делает тестирование более предсказуемым и контролируемым. Моки используются для имитации поведения реальных объектов, таких как базы данных, веб-сервисы и другие компоненты, взаимодействие с которыми может быть трудно контролировать или воспроизводить в тестах.
+#### Основные концепции моков
+1. **Изоляция**: Моки позволяют изолировать тестируемый код от внешних зависимостей, чтобы тесты были независимыми и предсказуемыми.
+2. **Поведение и верификация**: Моки могут быть настроены для возвращения определённых значений при вызове их методов (поведение), а также для проверки того, что определённые методы были вызваны с ожидаемыми аргументами (верификация).
+3. **Легковесность**: Моки создаются и уничтожаются быстро, что делает тесты более эффективными.
 
-#### Создание mock объектов и настройка поведения:
+##### Создание и настройка моков
 ```
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.*;
 
-public class MockitoExampleTest {
+class UserServiceTest {
 
     @Test
-    void testMock() {
-        List<String> mockedList = Mockito.mock(List.class);
+    void testGetUserById() {
+        // Создание мока
+        UserRepository userRepository = mock(UserRepository.class);
 
-        when(mockedList.get(0)).thenReturn("first");
-        when(mockedList.get(1)).thenReturn("second");
+        // Настройка поведения мока
+        User mockUser = new User(1L, "John Doe");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
 
-        Assertions.assertEquals("first", mockedList.get(0));
-        Assertions.assertEquals("second", mockedList.get(1));
+        // Создание объекта, который мы будем тестировать, с использованием мока
+        UserService userService = new UserService(userRepository);
+
+        // Вызов метода и проверка результата
+        User user = userService.getUserById(1L);
+        assertEquals("John Doe", user.getName());
+
+        // Проверка, что метод был вызван с ожидаемыми аргументами
+        verify(userRepository).findById(1L);
     }
 }
 ```
+#### Поведение и верификация
+##### Настройка поведения
+Вы можете настроить моки, чтобы они возвращали определённые значения или выбрасывали исключения при вызове методов.
+```
+when(mockObject.method()).thenReturn(value);
+when(mockObject.method()).thenThrow(new RuntimeException());
+```
+##### Проверка вызовов
+Mockito позволяет проверить, что методы моков были вызваны с ожидаемыми аргументами.
+```
+verify(mockObject).method(expectedArgument);
+verify(mockObject, times(1)).method(expectedArgument);
+```
 ### 4. Внедрение моков: использование аннотаций `@Mock`, `@InjectMocks`
 
-#### Использование аннотаций `@Mock` и `@InjectMocks`:
+Аннотация `@InjectMocks` в Mockito используется для автоматического создания экземпляра класса и внедрения в него моков. Это упрощает настройку тестов, так как позволяет автоматически подставлять моки в зависимости, что экономит время и уменьшает вероятность ошибок при ручной настройке тестов.
+
+#### Основные аспекты работы `@InjectMocks`
+1. **Автоматическое создание объекта**: Mockito создает экземпляр класса, аннотированного `@InjectMocks`.
+2. **Автоматическое внедрение зависимостей**: Mockito ищет поля в этом классе и пытается автоматически внедрить моки, аннотированные `@Mock`, `@Spy` или другие.
+
+#### Пример использования `@InjectMocks`
+Рассмотрим пример, где у нас есть сервис `UserService`, который зависит от репозитория `UserRepository`.
+#### Классы для тестирования
+##### UserRepository
 ```
-import static org.mockito.Mockito.*;
+public interface UserRepository {
+    User findById(Long id);
+}
+```
+##### UserService
+```
+public class UserService {
+    private UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id);
+    }
+}
+```
+Тестирование с использованием `@InjectMocks`
+```
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
-public class MockitoInjectionTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
 
     @Mock
-    private Dependency dependency;
+    private UserRepository userRepository;
 
     @InjectMocks
-    private Service service;
+    private UserService userService;
 
     @BeforeEach
     void setUp() {
@@ -1489,14 +1848,29 @@ public class MockitoInjectionTest {
     }
 
     @Test
-    void testServiceMethod() {
-        when(dependency.someMethod()).thenReturn("mocked result");
+    void testGetUserById() {
+        User mockUser = new User(1L, "John Doe");
+        when(userRepository.findById(1L)).thenReturn(mockUser);
 
-        String result = service.useDependency();
-        Assertions.assertEquals("mocked result", result);
+        User user = userService.getUserById(1L);
+        assertEquals("John Doe", user.getName());
+
+        verify(userRepository).findById(1L);
     }
 }
 ```
+#### Пошаговое объяснение
+1. **Аннотация `@Mock`**: Аннотирует поле `userRepository`, указывая Mockito создать мок для этого интерфейса.
+2. **Аннотация `@InjectMocks`**: Аннотирует поле `userService`, указывая Mockito создать экземпляр этого класса и автоматически внедрить в него моки.
+3. **Инициализация моков**: В методе `setUp()` используется `MockitoAnnotations.openMocks(this)`, чтобы инициализировать моки и внедрить их в `userService`.
+4. **Настройка поведения мока**: В методе `testGetUserById()` настраивается поведение мока `userRepository`, чтобы при вызове `findById(1L)` возвращался объект `mockUser`.
+5. **Вызов тестируемого метода**: Вызов метода `getUserById` на `userService` возвращает `mockUser`, и результат проверяется с помощью `assertEquals`.
+6. **Проверка вызова мока**: Проверяется, что метод `findById` был вызван с аргументом `1L`.
+
+#### Дополнительные возможности `@InjectMocks`
+- **Конструктор**: Mockito может использовать конструктор для внедрения зависимостей, если конструктор присутствует.
+- **Сеттеры**: Если у класса есть сеттеры, Mockito может использовать их для внедрения зависимостей.
+- **Поля**: Mockito может напрямую внедрять моки в поля класса, если они доступны (не private).
 ### 5. Тестирование исключений: проверка выброса исключений в JUnit
 
 #### Проверка выброса исключений:
